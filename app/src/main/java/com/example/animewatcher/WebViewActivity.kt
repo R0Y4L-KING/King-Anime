@@ -1,6 +1,10 @@
 package com.example.animewatcher
 
+import android.net.Uri
 import android.os.Bundle
+import android.view.View
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
@@ -10,17 +14,63 @@ class WebViewActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private var darkMode = false
+    private var originalHost: String = ""
+
+    private var lastUserTapTime: Long = 0
+    private val TAP_WINDOW_MS = 600L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_webview)
 
         val url = intent.getStringExtra("url") ?: "https://google.com"
+        originalHost = Uri.parse(url).host ?: ""
 
         webView = findViewById(R.id.webView)
+
+        webView.setOnTouchListener { _, _ ->
+            lastUserTapTime = System.currentTimeMillis()
+            false
+        }
+
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-        webView.webViewClient = WebViewClient()
+
+        webView.settings.setSupportMultipleWindows(false)
+        webView.settings.javaScriptCanOpenWindowsAutomatically = false
+
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: android.os.Message?
+            ): Boolean {
+                return false
+            }
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): Boolean {
+                val requestedUrl = request?.url ?: return false
+                val requestedHost = requestedUrl.host ?: ""
+
+                val isSameDomain = requestedHost == originalHost ||
+                        requestedHost.endsWith(".$originalHost")
+
+                val recentTap = (System.currentTimeMillis() - lastUserTapTime) < TAP_WINDOW_MS
+
+                return if (isSameDomain || recentTap) {
+                    false
+                } else {
+                    true
+                }
+            }
+        }
+
         webView.loadUrl(url)
 
         findViewById<Button>(R.id.btnDark).setOnClickListener {
