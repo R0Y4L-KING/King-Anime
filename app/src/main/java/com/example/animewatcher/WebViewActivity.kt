@@ -16,9 +16,6 @@ class WebViewActivity : AppCompatActivity() {
     private var darkMode = false
     private var originalHost: String = ""
 
-    private var lastUserTapTime: Long = 0
-    private val TAP_WINDOW_MS = 600L
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_webview)
@@ -27,11 +24,6 @@ class WebViewActivity : AppCompatActivity() {
         originalHost = Uri.parse(url).host ?: ""
 
         webView = findViewById(R.id.webView)
-
-        webView.setOnTouchListener { _, _ ->
-            lastUserTapTime = System.currentTimeMillis()
-            false
-        }
 
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
@@ -61,9 +53,7 @@ class WebViewActivity : AppCompatActivity() {
                 val isSameDomain = requestedHost == originalHost ||
                         requestedHost.endsWith(".$originalHost")
 
-                val recentTap = (System.currentTimeMillis() - lastUserTapTime) < TAP_WINDOW_MS
-
-                return if (isSameDomain || recentTap) {
+                return if (isSameDomain) {
                     false
                 } else {
                     true
